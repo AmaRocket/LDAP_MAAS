@@ -1,6 +1,9 @@
-from flask import Flask, request, jsonify
 import ldap3
 import os
+from flask import Flask, request, jsonify
+from dotenv import load_dotenv
+
+load_dotenv('.getenv')
 
 app = Flask(__name__)
 
@@ -9,6 +12,9 @@ LDAP_SERVER = os.getenv('LDAP_SERVER')
 BASE_DN = os.getenv('BASE_DN')
 BIND_DN = os.getenv('LDAP_BIND_DN')
 BIND_PASSWORD = os.getenv('LDAP_BIND_PASSWORD')
+
+if not all([LDAP_SERVER, BASE_DN, BIND_DN, BIND_PASSWORD]):
+    raise ValueError("One or more required LDAP environment variables are missing.")
 
 
 @app.route('/', methods=['GET'])
@@ -23,7 +29,6 @@ def search_user():
         conn = ldap3.Connection(server, BIND_DN, BIND_PASSWORD, auto_bind=ldap3.AUTO_BIND_TLS_BEFORE_BIND)
 
         search_filter = f'(|(uid={query}*)(mail={query}*))'
-        # search_filter = f'(&(uid={query}*)(!(uid=*adm))(!(uid=*sa))(!(uid=*test)))'  # Exclude adm, sa, test accounts
         conn.search(BASE_DN, search_filter, attributes=['uid', 'cn', 'mail'])
 
         users = []
