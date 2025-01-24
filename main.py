@@ -1,13 +1,14 @@
 from flask import Flask, request, jsonify
 import ldap3
+import os
 
 app = Flask(__name__)
 
 # LDAP Server Configuration
-LDAP_SERVER = 'ldap://unibasel.ads.unibas.ch'
-BASE_DN = 'DC=unibasel,DC=ads,DC=unibas,DC=ch'
-BIND_DN = 'd-dmi-admgmt@unibasel.ads.unibas.ch'
-BIND_PASSWORD = 'Dq8a2se4768e'
+LDAP_SERVER = os.getenv('LDAP_SERVER')
+BASE_DN = os.getenv('BASE_DN')
+BIND_DN = os.getenv('LDAP_BIND_DN')
+BIND_PASSWORD = os.getenv('LDAP_BIND_PASSWORD')
 
 
 @app.route('/', methods=['GET'])
