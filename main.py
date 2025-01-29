@@ -11,7 +11,7 @@ load_dotenv('.getenv')
 
 app = Flask(__name__)
 
-# Add rate limiting
+
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
@@ -29,7 +29,6 @@ if not all([LDAP_SERVER, BASE_DN, BIND_DN, BIND_PASSWORD]):
 
 def sanitize_ldap_input(query):
     """Sanitize input to prevent LDAP injection"""
-    # Remove special characters and limit length
     return re.sub(r'[()\\/*&|<>~=]', '', query)[:100]
 
 @app.route('/', methods=['GET'])
@@ -43,7 +42,6 @@ def search_user():
     safe_query = sanitize_ldap_input(query)
 
     try:
-        # Modified LDAP connection setup
         tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
         server = ldap3.Server(
             LDAP_SERVER,
@@ -58,12 +56,12 @@ def search_user():
             auto_bind=True  # Simplified from AUTO_BIND_TLS_BEFORE_BIND
         )
 
-        # Updated search filter to match your working command
+
         search_filter = f'(unibasChAuthNList={safe_query}*)'
         conn.search(
             BASE_DN, 
             search_filter, 
-            attributes=['uid', 'uidNumber']  # Updated attributes
+            attributes=['uid', 'uidNumber'] 
         )
 
         users = []
@@ -77,7 +75,6 @@ def search_user():
         return jsonify(users)
 
     except Exception as e:
-        # Log the actual error for debugging but don't send it to the client
         app.logger.error(f"LDAP search error: {str(e)}")
         return jsonify({'error': 'An internal error occurred'}), 500
 
@@ -86,6 +83,5 @@ def search_user():
             conn.unbind()
 
 if __name__ == '__main__':
-    # Only enable debug mode in development
     debug_mode = os.getenv('FLASK_ENV') == 'development'
     app.run(debug=debug_mode)
