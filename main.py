@@ -33,7 +33,7 @@ def sanitize_ldap_input(query):
     return re.sub(r'[()\\/*&|<>~=]', '', query)[:100]
 
 @app.route('/', methods=['GET'])
-@limiter.limit("10 per minute")  # Rate limiting per endpoint
+@limiter.limit("10 per minute")
 def search_user():
     query = request.args.get('query', '')
     if not query:
@@ -42,8 +42,8 @@ def search_user():
     # Sanitize input
     safe_query = sanitize_ldap_input(query)
 
-    # Connect to LDAP server
     try:
+        # Modified LDAP connection setup
         tls = ldap3.Tls(validate=ssl.CERT_REQUIRED)
         server = ldap3.Server(
             LDAP_SERVER,
@@ -55,19 +55,24 @@ def search_user():
             server,
             BIND_DN,
             BIND_PASSWORD,
-            auto_bind=ldap3.AUTO_BIND_TLS_BEFORE_BIND
+            auto_bind=True  # Simplified from AUTO_BIND_TLS_BEFORE_BIND
         )
 
-        search_filter = f'(|(uid={safe_query}*)(mail={safe_query}*))'
-        conn.search(BASE_DN, search_filter, attributes=['uid', 'cn', 'mail'])
+        # Updated search filter to match your working command
+        search_filter = f'(unibasChAuthNList={safe_query}*)'
+        conn.search(
+            BASE_DN, 
+            search_filter, 
+            attributes=['uid', 'uidNumber']  # Updated attributes
+        )
 
         users = []
         for entry in conn.entries:
-            users.append({
-                'username': entry.uid.value,
-                'full_name': entry.cn.value,
-                'email': entry.mail.value
-            })
+            user_data = {
+                'username': entry.uid.value if hasattr(entry, 'uid') else None,
+                'uid_number': entry.uidNumber.value if hasattr(entry, 'uidNumber') else None
+            }
+            users.append({k: v for k, v in user_data.items() if v is not None})
 
         return jsonify(users)
 
