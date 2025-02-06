@@ -1,35 +1,10 @@
 ///var/www/html/custom-ui.js
 
 (function() {
-    // Initial setup
-    initOnLoad();
+    // Track initialization state
+    let isInitialized = false;
 
-    // Watch for URL changes (SPA navigation)
-    let lastUrl = location.href;
-    new MutationObserver(() => {
-        const url = location.href;
-        if (url !== lastUrl) {
-            lastUrl = url;
-            updateStatus("URL changed, reinitializing...");
-            initOnLoad();
-        }
-    }).observe(document, { subtree: true, childList: true });
-
-    // Handle browser back/forward buttons
-    window.addEventListener('popstate', function() {
-        updateStatus("Navigation detected, reinitializing...");
-        initOnLoad();
-    });
-
-    function initOnLoad() {
-        if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", initScript);
-        } else {
-            initScript();
-        }
-    }
-
-    // Create persistent debug div
+    // Initialize debug div once
     const debugDiv = document.createElement('div');
     debugDiv.style.position = 'fixed';
     debugDiv.style.top = '10px';
@@ -46,22 +21,59 @@
         debugDiv.innerHTML += `<div>${new Date().toISOString().split('T')[1]} - ${message}</div>`;
     }
 
-    function initScript() {
-        // Clear any existing LDAP search elements
-        const existingSearch = document.querySelector('.ldap-search-container');
-        if (existingSearch) {
-            existingSearch.remove();
-        }
+    // Function to check if we're on the right page
+    function isAddUserPage() {
+        return window.location.pathname.includes('/MAAS/r/settings/users/add');
+    }
 
-        if (!window.location.pathname.includes('/MAAS/r/settings/users/add')) {
+    // Watch for DOM changes that might indicate page navigation
+    const observer = new MutationObserver((mutations) => {
+        if (!isInitialized && isAddUserPage()) {
+            updateStatus("DOM changed, checking if we need to initialize...");
+            initScript();
+        }
+    });
+
+    // Start observing with appropriate options
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
+    // Watch for URL changes
+    let lastUrl = location.href;
+    setInterval(() => {
+        const url = location.href;
+        if (url !== lastUrl) {
+            lastUrl = url;
+            updateStatus("URL changed, reinitializing...");
+            isInitialized = false;
+            initScript();
+        }
+    }, 100);
+
+    function initScript() {
+        if (!isAddUserPage()) {
             updateStatus("Not on Add User page");
             return;
         }
-        updateStatus("On Add User page");
+
+        if (isInitialized) {
+            updateStatus("Already initialized");
+            return;
+        }
+
+        updateStatus("On Add User page, starting initialization");
 
         function initializeLDAPSearch() {
             updateStatus("Checking for form fields...");
             
+            // Remove any existing suggestions
+            const existingSuggestions = document.querySelector('.ldap-suggestions');
+            if (existingSuggestions) {
+                existingSuggestions.remove();
+            }
+
             const fields = {
                 username: document.querySelector('input[name="username"]'),
                 fullName: document.querySelector('input[name="fullName"]'),
@@ -76,51 +88,32 @@
             updateStatus("All form fields found!");
 
             try {
-                // Create search container with MAAS styling
-                const searchContainer = document.createElement('div');
-                searchContainer.className = 'p-form__group p-form-validation ldap-search-container';
-                searchContainer.innerHTML = `
-                    <label class="p-form__label">LDAP Search</label>
-                    <div class="p-form__control u-clearfix" style="position: relative;">
-                        <input type="text" 
-                               class="p-form-validation__input" 
-                               placeholder="Start typing username to search LDAP..."
-                               style="margin-bottom: 10px; width: 100%;">
-                        <div class="ldap-suggestions" style="
-                            display: none;
-                            position: absolute;
-                            top: 100%;
-                            left: 0;
-                            right: 0;
-                            background: white;
-                            border: 1px solid #ccc;
-                            border-top: none;
-                            max-height: 200px;
-                            overflow-y: auto;
-                            z-index: 1000;
-                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                        "></div>
-                    </div>
+                // Create suggestions div
+                const suggestionsDiv = document.createElement('div');
+                suggestionsDiv.className = 'ldap-suggestions';
+                suggestionsDiv.style.cssText = `
+                    display: none;
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    right: 0;
+                    background: white;
+                    border: 1px solid #ccc;
+                    border-top: none;
+                    max-height: 200px;
+                    overflow-y: auto;
+                    z-index: 1000;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 `;
 
-                // Get references to the new elements
-                const searchInput = searchContainer.querySelector('input');
-                const suggestionsDiv = searchContainer.querySelector('.ldap-suggestions');
+                // Add suggestions div after username field
+                const usernameContainer = fields.username.closest('.p-form__control');
+                usernameContainer.style.position = 'relative';
+                usernameContainer.appendChild(suggestionsDiv);
 
-                // Insert at the top of the form
-                const form = fields.username.closest('form');
-                if (form) {
-                    form.insertBefore(searchContainer, form.firstChild);
-                } else {
-                    throw new Error("Form not found");
-                }
-
-                updateStatus("UI elements created");
-
-                // Cross-browser compatible event handling
                 let searchTimeout = null;
-                searchInput.addEventListener('input', function(e) {
-                    updateStatus("Search input changed");
+                fields.username.addEventListener('input', function(e) {
+                    updateStatus("Username input changed");
                     if (searchTimeout) {
                         clearTimeout(searchTimeout);
                     }
@@ -135,7 +128,6 @@
                     searchTimeout = setTimeout(function() {
                         updateStatus(`Making API call for: ${query}`);
                         
-                        // Cross-browser compatible fetch
                         const xhr = new XMLHttpRequest();
                         xhr.open('GET', `/ldap-search/?query=${encodeURIComponent(query)}`, true);
                         xhr.setRequestHeader('Accept', 'application/json');
@@ -184,13 +176,10 @@
                                             const email = this.dataset.email;
                                             
                                             updateStatus(`Selected: ${username}`);
-                                            
-                                            // Fill in all fields with LDAP data
                                             fields.username.value = username;
                                             fields.fullName.value = displayName;
-                                            fields.email.value = email || `${username}@unibas.ch`; // Fallback to constructed email if not provided
+                                            fields.email.value = email || `${username}@unibas.ch`;
                                             
-                                            searchInput.value = username;
                                             suggestionsDiv.style.display = 'none';
                                         });
                                     });
@@ -219,21 +208,24 @@
 
                 // Close suggestions when clicking outside
                 document.addEventListener('click', function(e) {
-                    if (!searchContainer.contains(e.target)) {
+                    if (!fields.username.contains(e.target) && !suggestionsDiv.contains(e.target)) {
                         suggestionsDiv.style.display = 'none';
                     }
                 });
 
+                // Mark as initialized when successful
+                isInitialized = true;
                 updateStatus("Setup complete");
                 return true;
 
             } catch (err) {
                 updateStatus(`Error during setup: ${err.message}`);
+                isInitialized = false;
                 return false;
             }
         }
 
-        // Modified retry logic with cleanup
+        // Modified retry logic
         let attempts = 0;
         const maxAttempts = 20;
         const checkInterval = setInterval(function() {
@@ -244,9 +236,13 @@
                 clearInterval(checkInterval);
                 if (attempts >= maxAttempts) {
                     updateStatus("Gave up waiting for form fields after 10 seconds");
+                    isInitialized = false;
                 }
             }
         }, 500);
     }
+
+    // Initial call
+    initScript();
 })();
 
