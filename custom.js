@@ -1,34 +1,59 @@
 ///var/www/html/custom-ui.js
 
 (function() {
-    // Wait for page to be fully loaded
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initScript);
-    } else {
-        initScript();
+    // Initial setup
+    initOnLoad();
+
+    // Watch for URL changes (SPA navigation)
+    let lastUrl = location.href;
+    new MutationObserver(() => {
+        const url = location.href;
+        if (url !== lastUrl) {
+            lastUrl = url;
+            updateStatus("URL changed, reinitializing...");
+            initOnLoad();
+        }
+    }).observe(document, { subtree: true, childList: true });
+
+    // Handle browser back/forward buttons
+    window.addEventListener('popstate', function() {
+        updateStatus("Navigation detected, reinitializing...");
+        initOnLoad();
+    });
+
+    function initOnLoad() {
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", initScript);
+        } else {
+            initScript();
+        }
+    }
+
+    // Create persistent debug div
+    const debugDiv = document.createElement('div');
+    debugDiv.style.position = 'fixed';
+    debugDiv.style.top = '10px';
+    debugDiv.style.right = '10px';
+    debugDiv.style.background = '#f0f0f0';
+    debugDiv.style.padding = '10px';
+    debugDiv.style.border = '1px solid #ccc';
+    debugDiv.style.zIndex = '9999';
+    debugDiv.style.fontSize = '12px';
+    document.body.appendChild(debugDiv);
+
+    function updateStatus(message) {
+        console.log(message);
+        debugDiv.innerHTML += `<div>${new Date().toISOString().split('T')[1]} - ${message}</div>`;
     }
 
     function initScript() {
-        // Debug div to show status
-        const debugDiv = document.createElement('div');
-        debugDiv.style.position = 'fixed';
-        debugDiv.style.top = '10px';
-        debugDiv.style.right = '10px';
-        debugDiv.style.background = '#f0f0f0';
-        debugDiv.style.padding = '10px';
-        debugDiv.style.border = '1px solid #ccc';
-        debugDiv.style.zIndex = '9999';
-        debugDiv.style.fontSize = '12px';
-        document.body.appendChild(debugDiv);
-
-        function updateStatus(message) {
-            console.log(message);
-            debugDiv.innerHTML += `<div>${new Date().toISOString().split('T')[1]} - ${message}</div>`;
+        // Clear any existing LDAP search elements
+        const existingSearch = document.querySelector('.ldap-search-container');
+        if (existingSearch) {
+            existingSearch.remove();
         }
 
-        // Cross-browser path check
-        const currentPath = window.location.pathname || '';
-        if (!currentPath.includes('/MAAS/r/settings/users/add')) {
+        if (!window.location.pathname.includes('/MAAS/r/settings/users/add')) {
             updateStatus("Not on Add User page");
             return;
         }
@@ -37,14 +62,12 @@
         function initializeLDAPSearch() {
             updateStatus("Checking for form fields...");
             
-            // More robust field finding
             const fields = {
                 username: document.querySelector('input[name="username"]'),
                 fullName: document.querySelector('input[name="fullName"]'),
                 email: document.querySelector('input[name="email"]')
             };
 
-            // Verify all fields exist
             if (!fields.username || !fields.email || !fields.fullName) {
                 updateStatus("Not all fields found yet, will retry...");
                 return false;
@@ -55,7 +78,7 @@
             try {
                 // Create search container with MAAS styling
                 const searchContainer = document.createElement('div');
-                searchContainer.className = 'p-form__group p-form-validation';
+                searchContainer.className = 'p-form__group p-form-validation ldap-search-container';
                 searchContainer.innerHTML = `
                     <label class="p-form__label">LDAP Search</label>
                     <div class="p-form__control u-clearfix" style="position: relative;">
@@ -201,7 +224,7 @@
             }
         }
 
-        // Retry logic
+        // Modified retry logic with cleanup
         let attempts = 0;
         const maxAttempts = 20;
         const checkInterval = setInterval(function() {
