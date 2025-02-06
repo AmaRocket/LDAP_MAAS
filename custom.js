@@ -1,9 +1,14 @@
 ///var/www/html/custom-ui.js
 
 (function() {
-    document.addEventListener("DOMContentLoaded", function() {
-        console.log("Script loaded, checking path...");
-        
+    // Wait for page to be fully loaded
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initScript);
+    } else {
+        initScript();
+    }
+
+    function initScript() {
         // Debug div to show status
         const debugDiv = document.createElement('div');
         debugDiv.style.position = 'fixed';
@@ -21,8 +26,9 @@
             debugDiv.innerHTML += `<div>${new Date().toISOString().split('T')[1]} - ${message}</div>`;
         }
 
-        // Check if we are on the 'Add User' page
-        if (!window.location.pathname.includes('/MAAS/r/settings/users/add')) {
+        // Cross-browser path check
+        const currentPath = window.location.pathname || '';
+        if (!currentPath.includes('/MAAS/r/settings/users/add')) {
             updateStatus("Not on Add User page");
             return;
         }
@@ -31,13 +37,14 @@
         function initializeLDAPSearch() {
             updateStatus("Checking for form fields...");
             
-            // Find all relevant form fields using the correct selectors
+            // More robust field finding
             const fields = {
                 username: document.querySelector('input[name="username"]'),
                 fullName: document.querySelector('input[name="fullName"]'),
                 email: document.querySelector('input[name="email"]')
             };
 
+            // Verify all fields exist
             if (!fields.username || !fields.email || !fields.fullName) {
                 updateStatus("Not all fields found yet, will retry...");
                 return false;
@@ -45,107 +52,124 @@
 
             updateStatus("All form fields found!");
 
-            // Create search input
-            let searchInput = document.createElement('input');
-            searchInput.type = 'text';
-            searchInput.placeholder = 'Start typing username to search LDAP...';
-            searchInput.className = 'p-form-validation__input'; // Using MAAS styling
-            searchInput.style.marginBottom = '10px';
-            searchInput.style.width = '100%';
+            try {
+                // Create search container with MAAS styling
+                const searchContainer = document.createElement('div');
+                searchContainer.className = 'p-form__group p-form-validation';
+                searchContainer.innerHTML = `
+                    <label class="p-form__label">LDAP Search</label>
+                    <div class="p-form__control u-clearfix">
+                        <input type="text" 
+                               class="p-form-validation__input" 
+                               placeholder="Start typing username to search LDAP..."
+                               style="margin-bottom: 10px; width: 100%;">
+                        <select class="p-form-validation__input" 
+                                style="margin-bottom: 10px; width: 100%;">
+                            <option value="">Type to search users...</option>
+                        </select>
+                    </div>
+                `;
 
-            // Create dropdown
-            let dropdown = document.createElement('select');
-            dropdown.innerHTML = '<option value="">Type to search users...</option>';
-            dropdown.className = 'p-form-validation__input'; // Using MAAS styling
-            dropdown.style.marginBottom = '10px';
-            dropdown.style.width = '100%';
+                // Get references to the new elements
+                const searchInput = searchContainer.querySelector('input');
+                const dropdown = searchContainer.querySelector('select');
 
-            // Create a container that matches MAAS styling
-            const searchContainer = document.createElement('div');
-            searchContainer.className = 'p-form__group p-form-validation';
-            const searchLabel = document.createElement('label');
-            searchLabel.className = 'p-form__label';
-            searchLabel.textContent = 'LDAP Search';
-            const controlDiv = document.createElement('div');
-            controlDiv.className = 'p-form__control u-clearfix';
-            
-            // Assemble the container
-            controlDiv.appendChild(searchInput);
-            controlDiv.appendChild(dropdown);
-            searchContainer.appendChild(searchLabel);
-            searchContainer.appendChild(controlDiv);
+                // Insert at the top of the form
+                const form = fields.username.closest('form');
+                if (form) {
+                    form.insertBefore(searchContainer, form.firstChild);
+                } else {
+                    throw new Error("Form not found");
+                }
 
-            // Insert at the top of the form
-            const form = fields.username.closest('form');
-            form.insertBefore(searchContainer, form.firstChild);
-            
-            updateStatus("UI elements created");
+                updateStatus("UI elements created");
 
-            // Handle search
-            let timeout = null;
-            searchInput.addEventListener('input', function() {
-                updateStatus("Search input changed");
-                clearTimeout(timeout);
-                const query = this.value.trim();
-                
-                dropdown.innerHTML = '<option value="">Loading...</option>';
-
-                timeout = setTimeout(() => {
-                    if (query.length < 2) {
-                        dropdown.innerHTML = '<option value="">Type at least 2 characters...</option>';
-                        return;
+                // Cross-browser compatible event handling
+                let searchTimeout = null;
+                searchInput.addEventListener('input', function(e) {
+                    updateStatus("Search input changed");
+                    if (searchTimeout) {
+                        clearTimeout(searchTimeout);
                     }
 
-                    updateStatus(`Making API call for: ${query}`);
-                    fetch(`/ldap-search/?query=${encodeURIComponent(query)}`)
-                        .then(response => {
-                            updateStatus(`API response status: ${response.status}`);
-                            if (!response.ok) {
-                                throw new Error(`HTTP error! status: ${response.status}`);
+                    const query = (e.target.value || '').trim();
+                    dropdown.innerHTML = '<option value="">Loading...</option>';
+
+                    searchTimeout = setTimeout(function() {
+                        if (query.length < 2) {
+                            dropdown.innerHTML = '<option value="">Type at least 2 characters...</option>';
+                            return;
+                        }
+
+                        updateStatus(`Making API call for: ${query}`);
+                        
+                        // Cross-browser compatible fetch
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('GET', `/ldap-search/?query=${encodeURIComponent(query)}`, true);
+                        xhr.setRequestHeader('Accept', 'application/json');
+                        
+                        xhr.onload = function() {
+                            updateStatus(`API response status: ${xhr.status}`);
+                            if (xhr.status === 200) {
+                                try {
+                                    const users = JSON.parse(xhr.responseText);
+                                    updateStatus(`Received ${users.length} users`);
+                                    
+                                    if (!Array.isArray(users) || users.length === 0) {
+                                        dropdown.innerHTML = '<option value="">No users found</option>';
+                                        return;
+                                    }
+
+                                    dropdown.innerHTML = '<option value="">Select User</option>';
+                                    users.forEach(function(user) {
+                                        const option = document.createElement('option');
+                                        option.value = user.username || '';
+                                        option.textContent = `${user.username} (${user.uid_number || 'No UID'})`;
+                                        dropdown.appendChild(option);
+                                    });
+                                } catch (err) {
+                                    updateStatus(`Error parsing response: ${err.message}`);
+                                    dropdown.innerHTML = '<option value="">Error processing results</option>';
+                                }
+                            } else {
+                                updateStatus(`Error: ${xhr.status}`);
+                                dropdown.innerHTML = '<option value="">Error fetching users</option>';
                             }
-                            return response.json();
-                        })
-                        .then(users => {
-                            updateStatus(`Received ${users.length} users`);
-                            if (!Array.isArray(users) || users.length === 0) {
-                                dropdown.innerHTML = '<option value="">No users found</option>';
-                                return;
-                            }
+                        };
 
-                            dropdown.innerHTML = '<option value="">Select User</option>';
-                            users.forEach(user => {
-                                let option = document.createElement('option');
-                                option.value = user.username || '';
-                                option.textContent = `${user.username} (${user.uid_number || 'No UID'})`;
-                                dropdown.appendChild(option);
-                            });
-                        })
-                        .catch(err => {
-                            updateStatus(`ERROR: ${err.message}`);
-                            dropdown.innerHTML = '<option value="">Error fetching users</option>';
-                        });
-                }, 300);
-            });
+                        xhr.onerror = function() {
+                            updateStatus("Network error occurred");
+                            dropdown.innerHTML = '<option value="">Network error</option>';
+                        };
 
-            // Update all fields when selection changes
-            dropdown.addEventListener('change', function() {
-                const selectedValue = this.value;
-                updateStatus(`Selected: ${selectedValue}`);
-                
-                // Auto-fill all fields
-                fields.username.value = selectedValue;
-                fields.email.value = `${selectedValue}@unibas.ch`; // Add domain
-                // We could get full name from LDAP if available
-            });
+                        xhr.send();
+                    }, 300);
+                });
 
-            updateStatus("Setup complete");
-            return true;
+                // Update fields when selection changes
+                dropdown.addEventListener('change', function(e) {
+                    const selectedValue = e.target.value;
+                    updateStatus(`Selected: ${selectedValue}`);
+                    
+                    if (selectedValue) {
+                        fields.username.value = selectedValue;
+                        fields.email.value = `${selectedValue}@unibas.ch`;
+                    }
+                });
+
+                updateStatus("Setup complete");
+                return true;
+
+            } catch (err) {
+                updateStatus(`Error during setup: ${err.message}`);
+                return false;
+            }
         }
 
-        // Try to initialize every 500ms until successful
+        // Retry logic
         let attempts = 0;
-        const maxAttempts = 20; // 10 seconds maximum
-        const checkInterval = setInterval(() => {
+        const maxAttempts = 20;
+        const checkInterval = setInterval(function() {
             attempts++;
             updateStatus(`Attempt ${attempts} to find form fields...`);
             
@@ -156,5 +180,6 @@
                 }
             }
         }, 500);
-    });
+    }
 })();
+
