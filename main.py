@@ -61,14 +61,18 @@ def search_user():
         conn.search(
             BASE_DN, 
             search_filter, 
-            attributes=['uid', 'uidNumber'] 
+            attributes=['uid', 'uidNumber', 'displayName', 'cn', 'mail']
         )
 
         users = []
         for entry in conn.entries:
+            # fields 
             user_data = {
                 'username': entry.uid.value if hasattr(entry, 'uid') else None,
-                'uid_number': entry.uidNumber.value if hasattr(entry, 'uidNumber') else None
+                'uid_number': entry.uidNumber.value if hasattr(entry, 'uidNumber') else None,
+                'display_name': entry.displayName.value if hasattr(entry, 'displayName') else None,
+                'cn': entry.cn.value if hasattr(entry, 'cn') else None,
+                'email': entry.mail.value if hasattr(entry, 'mail') else None
             }
             users.append({k: v for k, v in user_data.items() if v is not None})
 

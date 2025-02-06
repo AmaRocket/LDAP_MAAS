@@ -156,12 +156,14 @@
                                     suggestionsDiv.innerHTML = users.map(user => `
                                         <div class="suggestion-item" 
                                              data-username="${user.username || ''}"
+                                             data-display-name="${user.display_name || user.cn || ''}"
+                                             data-email="${user.email || ''}"
                                              style="
                                                 padding: 8px 12px;
                                                 cursor: pointer;
                                                 border-bottom: 1px solid #eee;
                                              ">
-                                            ${user.username} (${user.uid_number || 'No UID'})
+                                            ${user.username} - ${user.display_name || user.cn || 'No Name'} (${user.email || 'No Email'})
                                         </div>
                                     `).join('');
                                     
@@ -178,9 +180,16 @@
                                         });
                                         item.addEventListener('click', function() {
                                             const username = this.dataset.username;
+                                            const displayName = this.dataset.displayName;
+                                            const email = this.dataset.email;
+                                            
                                             updateStatus(`Selected: ${username}`);
+                                            
+                                            // Fill in all fields with LDAP data
                                             fields.username.value = username;
-                                            fields.email.value = `${username}@unibas.ch`;
+                                            fields.fullName.value = displayName;
+                                            fields.email.value = email || `${username}@unibas.ch`; // Fallback to constructed email if not provided
+                                            
                                             searchInput.value = username;
                                             suggestionsDiv.style.display = 'none';
                                         });
