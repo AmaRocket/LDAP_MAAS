@@ -58,21 +58,31 @@
                 searchContainer.className = 'p-form__group p-form-validation';
                 searchContainer.innerHTML = `
                     <label class="p-form__label">LDAP Search</label>
-                    <div class="p-form__control u-clearfix">
+                    <div class="p-form__control u-clearfix" style="position: relative;">
                         <input type="text" 
                                class="p-form-validation__input" 
                                placeholder="Start typing username to search LDAP..."
                                style="margin-bottom: 10px; width: 100%;">
-                        <select class="p-form-validation__input" 
-                                style="margin-bottom: 10px; width: 100%;">
-                            <option value="">Type to search users...</option>
-                        </select>
+                        <div class="ldap-suggestions" style="
+                            display: none;
+                            position: absolute;
+                            top: 100%;
+                            left: 0;
+                            right: 0;
+                            background: white;
+                            border: 1px solid #ccc;
+                            border-top: none;
+                            max-height: 200px;
+                            overflow-y: auto;
+                            z-index: 1000;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        "></div>
                     </div>
                 `;
 
                 // Get references to the new elements
                 const searchInput = searchContainer.querySelector('input');
-                const dropdown = searchContainer.querySelector('select');
+                const suggestionsDiv = searchContainer.querySelector('.ldap-suggestions');
 
                 // Insert at the top of the form
                 const form = fields.username.closest('form');
@@ -93,14 +103,13 @@
                     }
 
                     const query = (e.target.value || '').trim();
-                    dropdown.innerHTML = '<option value="">Loading...</option>';
+                    
+                    if (query.length < 2) {
+                        suggestionsDiv.style.display = 'none';
+                        return;
+                    }
 
                     searchTimeout = setTimeout(function() {
-                        if (query.length < 2) {
-                            dropdown.innerHTML = '<option value="">Type at least 2 characters...</option>';
-                            return;
-                        }
-
                         updateStatus(`Making API call for: ${query}`);
                         
                         // Cross-browser compatible fetch
@@ -116,44 +125,70 @@
                                     updateStatus(`Received ${users.length} users`);
                                     
                                     if (!Array.isArray(users) || users.length === 0) {
-                                        dropdown.innerHTML = '<option value="">No users found</option>';
+                                        suggestionsDiv.innerHTML = '<div class="suggestion-item" style="padding: 8px 12px;">No users found</div>';
+                                        suggestionsDiv.style.display = 'block';
                                         return;
                                     }
 
-                                    dropdown.innerHTML = '<option value="">Select User</option>';
-                                    users.forEach(function(user) {
-                                        const option = document.createElement('option');
-                                        option.value = user.username || '';
-                                        option.textContent = `${user.username} (${user.uid_number || 'No UID'})`;
-                                        dropdown.appendChild(option);
+                                    suggestionsDiv.innerHTML = users.map(user => `
+                                        <div class="suggestion-item" 
+                                             data-username="${user.username || ''}"
+                                             style="
+                                                padding: 8px 12px;
+                                                cursor: pointer;
+                                                border-bottom: 1px solid #eee;
+                                             ">
+                                            ${user.username} (${user.uid_number || 'No UID'})
+                                        </div>
+                                    `).join('');
+                                    
+                                    suggestionsDiv.style.display = 'block';
+
+                                    // Add hover effect to suggestions
+                                    const items = suggestionsDiv.getElementsByClassName('suggestion-item');
+                                    Array.from(items).forEach(item => {
+                                        item.addEventListener('mouseover', function() {
+                                            this.style.backgroundColor = '#f0f0f0';
+                                        });
+                                        item.addEventListener('mouseout', function() {
+                                            this.style.backgroundColor = '';
+                                        });
+                                        item.addEventListener('click', function() {
+                                            const username = this.dataset.username;
+                                            updateStatus(`Selected: ${username}`);
+                                            fields.username.value = username;
+                                            fields.email.value = `${username}@unibas.ch`;
+                                            searchInput.value = username;
+                                            suggestionsDiv.style.display = 'none';
+                                        });
                                     });
+
                                 } catch (err) {
                                     updateStatus(`Error parsing response: ${err.message}`);
-                                    dropdown.innerHTML = '<option value="">Error processing results</option>';
+                                    suggestionsDiv.innerHTML = '<div class="suggestion-item" style="padding: 8px 12px;">Error processing results</div>';
+                                    suggestionsDiv.style.display = 'block';
                                 }
                             } else {
                                 updateStatus(`Error: ${xhr.status}`);
-                                dropdown.innerHTML = '<option value="">Error fetching users</option>';
+                                suggestionsDiv.innerHTML = '<div class="suggestion-item" style="padding: 8px 12px;">Error fetching users</div>';
+                                suggestionsDiv.style.display = 'block';
                             }
                         };
 
                         xhr.onerror = function() {
                             updateStatus("Network error occurred");
-                            dropdown.innerHTML = '<option value="">Network error</option>';
+                            suggestionsDiv.innerHTML = '<div class="suggestion-item" style="padding: 8px 12px;">Network error</div>';
+                            suggestionsDiv.style.display = 'block';
                         };
 
                         xhr.send();
                     }, 300);
                 });
 
-                // Update fields when selection changes
-                dropdown.addEventListener('change', function(e) {
-                    const selectedValue = e.target.value;
-                    updateStatus(`Selected: ${selectedValue}`);
-                    
-                    if (selectedValue) {
-                        fields.username.value = selectedValue;
-                        fields.email.value = `${selectedValue}@unibas.ch`;
+                // Close suggestions when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!searchContainer.contains(e.target)) {
+                        suggestionsDiv.style.display = 'none';
                     }
                 });
 
