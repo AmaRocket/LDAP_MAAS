@@ -199,6 +199,7 @@ pipeline {
                     }
                 }
             }
+        }
     }
 
     post {
