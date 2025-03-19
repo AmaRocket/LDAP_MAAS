@@ -34,7 +34,7 @@ pipeline {
                                 git branch: 'main', url: 'https://github.com/AmaRocket/LDAP_MAAS.git'
                             }
                         }
-                    }
+
                 }
             }
         }
