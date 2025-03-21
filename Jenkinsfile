@@ -18,25 +18,25 @@ pipeline {
     }
 
     stages {
-        stage('Clone Repository') {
-            steps {
-                    dir('/var/lib/jenkins/workspace/LDAP_MAAS/') {
-                        echo "LDAP_SERVER: ${LDAP_SERVER}"
-                        echo "BASE_DN: ${BASE_DN}"
-                        echo "LDAP_BIND_DN: ${LDAP_BIND_DN}"
-                        echo "LDAP_BIND_PASSWORD: ${LDAP_BIND_PASSWORD}"
-                        script {
-                            if (fileExists('.git')) {
-                                sh 'git stash || true'
-                                sh 'git pull origin main'
-                            } else {
-                                git branch: 'main', url: 'https://github.com/AmaRocket/LDAP_MAAS.git'
-                            }
-                        }
-
-                }
-            }
-        }
+//         stage('Clone Repository') {
+//             steps {
+//                     dir('/var/lib/jenkins/workspace/LDAP_MAAS/') {
+//                         echo "LDAP_SERVER: ${LDAP_SERVER}"
+//                         echo "BASE_DN: ${BASE_DN}"
+//                         echo "LDAP_BIND_DN: ${LDAP_BIND_DN}"
+//                         echo "LDAP_BIND_PASSWORD: ${LDAP_BIND_PASSWORD}"
+//                         script {
+//                             if (fileExists('.git')) {
+//                                 sh 'git stash || true'
+//                                 sh 'git pull origin main'
+//                             } else {
+//                                 git branch: 'main', url: 'https://github.com/AmaRocket/LDAP_MAAS.git'
+//                             }
+//                         }
+//
+//                 }
+//             }
+//         }
 
         stage('Install Dependencies and Run Tests') {
             steps {
