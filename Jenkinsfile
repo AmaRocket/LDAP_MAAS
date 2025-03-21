@@ -2,19 +2,12 @@ pipeline {
     agent any
 
     stages {
-        stage('Echo Environment Variables') {
+        stage('List Environment Variables') {
             steps {
-                echo "Hello world!"
+                script {
+                    sh 'printenv'
+                }
             }
-        }
-    }
-
-    post {
-        success {
-            echo 'Pipeline ran successfully!'
-        }
-        failure {
-            echo 'Pipeline failed. Check logs for details.'
         }
     }
 }
