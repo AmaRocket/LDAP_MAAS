@@ -107,21 +107,21 @@ pipeline {
 //            }
 //        }
 
-        stage('Clean REGION_CONTROLLER via SSH') {
-            steps {
-                script {
-                    sshagent(['region_server_ssh_credentials']) {
-                        sh '''
-                        ssh -o StrictHostKeyChecking=no $MAAS_USER@$REGION_CONTROLLER_IP '
-                            docker container prune -f
-                            docker image prune -af
-                            echo "REGION_CONTROLLER cleaned!"
-                        '
-                        '''
-                    }
-                }
-            }
-        }
+//         stage('Clean REGION_CONTROLLER via SSH') {
+//             steps {
+//                 script {
+//                     sshagent(['region_server_ssh_credentials']) {
+//                         sh '''
+//                         ssh -o StrictHostKeyChecking=no $MAAS_USER@$REGION_CONTROLLER_IP '
+//                             docker container prune -f
+//                             docker image prune -af
+//                             echo "REGION_CONTROLLER cleaned!"
+//                         '
+//                         '''
+//                     }
+//                 }
+//             }
+//         }
 
         stage('Start Docker Swarm Service') {
             steps {
