@@ -89,23 +89,23 @@ pipeline {
             }
         }
 
-        stage('Clean RACK_CONTROLLER images and containers via SSH') {
-            steps {
-                script {
-                    sshagent(['rack_server_ssh_credentials']) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no \$MAAS_USER@\${RACK_CONTROLLER_IP} '
-                            set -e # Stop if anything goes wrong
-                            echo Connection Successful!
-                            docker container prune -f
-                            docker image prune -af
-                            echo Images and containers were cleaned!
-                            '
-                        """
-                    }
-                }
-            }
-        }
+//        stage('Clean RACK_CONTROLLER images and containers via SSH') {
+ //           steps {
+//                script {
+//                    sshagent(['rack_server_ssh_credentials']) {
+//                        sh """
+//                        ssh -o StrictHostKeyChecking=no \$MAAS_USER@\${RACK_CONTROLLER_IP} '
+//                            set -e # Stop if anything goes wrong
+//                            echo Connection Successful!
+//                            docker container prune -f
+//                            docker image prune -af
+//                            echo Images and containers were cleaned!
+//                            '
+ //                       """
+//                    }
+//                }
+//            }
+//        }
 
         stage('Clean REGION_CONTROLLER via SSH') {
             steps {
