@@ -15,18 +15,17 @@ pipeline {
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Clone Repository') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/AmaRocket/LDAP_MAAS.git',
-                    credentialsId: '527a7dbf-22e1-4eed-963a-ddb1dcaf8526'
-            }
-        }
-
-        stage('Pull Latest Changes') {
-            steps {
-                script {
-                    sh 'git pull origin main'
+                dir('/var/lib/jenkins/workspace/LDAP_MAAS/') {
+                    script {
+                        if (fileExists('.git')) {
+                            sh 'git stash || true'
+                            sh 'git pull origin main'
+                        } else {
+                            git branch: 'main', url: 'https://github.com/AmaRocket/LDAP_MAAS.git'
+                        }
+                    }
                 }
             }
         }
