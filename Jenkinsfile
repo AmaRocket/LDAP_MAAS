@@ -153,20 +153,20 @@ pipeline {
             }
         }
 
-        stage('Restart NGINX on REGION_CONTROLLER via SSH') {
-            steps {
-                script {
-                    sshagent(['region_server_ssh_credentials']) {
-                        sh '''
-                        ssh -o StrictHostKeyChecking=no $MAAS_USER@$REGION_CONTROLLER_IP '
-                            sudo systemctl restart nginx.service
-                            echo "Nginx restarted on REGION_CONTROLLER!"
-                        '
-                        '''
-                    }
-                }
-            }
-        }
+//         stage('Restart NGINX on REGION_CONTROLLER via SSH') {
+//             steps {
+//                 script {
+//                     sshagent(['region_server_ssh_credentials']) {
+//                         sh '''
+//                         ssh -o StrictHostKeyChecking=no $MAAS_USER@$REGION_CONTROLLER_IP '
+//                             sudo systemctl restart nginx.service
+//                             echo "Nginx restarted on REGION_CONTROLLER!"
+//                         '
+//                         '''
+//                     }
+//                 }
+//             }
+//         }
     }
 
     post {
