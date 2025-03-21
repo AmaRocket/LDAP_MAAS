@@ -21,6 +21,10 @@ pipeline {
         stage('Clone Repository') {
             steps {
                     dir('/var/lib/jenkins/workspace/LDAP_MAAS/') {
+                        echo "LDAP_SERVER: ${LDAP_SERVER}"
+                        echo "BASE_DN: ${BASE_DN}"
+                        echo "LDAP_BIND_DN: ${LDAP_BIND_DN}"
+                        echo "LDAP_BIND_PASSWORD: ${LDAP_BIND_PASSWORD}"
                         script {
                             if (fileExists('.git')) {
                                 sh 'git stash || true'
