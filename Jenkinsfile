@@ -12,6 +12,10 @@ pipeline {
         BASE_DN = credentials('base_dn')
         LDAP_BIND_DN = credentials('ldap_bind_dn')
         LDAP_SERVER = credentials('ldap_server')
+
+        REGION_CONTROLLER_IP = credentials('region-controller-ip')
+        RACK_CONTROLLER_IP = credentials('rack-controller-ip')
+        MAAS_USER = credentials('maas_user')
     }
 
     stages {
@@ -89,39 +93,39 @@ pipeline {
             }
         }
 
-//        stage('Clean RACK_CONTROLLER images and containers via SSH') {
- //           steps {
-//                script {
-//                    sshagent(['rack_server_ssh_credentials']) {
-//                        sh """
-//                        ssh -o StrictHostKeyChecking=no \$MAAS_USER@\${RACK_CONTROLLER_IP} '
-//                            set -e # Stop if anything goes wrong
-//                            echo Connection Successful!
-//                            docker container prune -f
-//                            docker image prune -af
-//                            echo Images and containers were cleaned!
-//                            '
- //                       """
-//                    }
-//                }
-//            }
-//        }
+       stage('Clean RACK_CONTROLLER images and containers via SSH') {
+           steps {
+               script {
+                   sshagent(['rack_server_ssh_credentials']) {
+                       sh """
+                       ssh -o StrictHostKeyChecking=no \$MAAS_USER@\${RACK_CONTROLLER_IP} '
+                           set -e # Stop if anything goes wrong
+                           echo Connection Successful!
+                           docker container prune -f
+                           docker image prune -af
+                           echo Images and containers were cleaned!
+                           '
+                       """
+                   }
+               }
+           }
+       }
 
-//         stage('Clean REGION_CONTROLLER via SSH') {
-//             steps {
-//                 script {
-//                     sshagent(['region_server_ssh_credentials']) {
-//                         sh '''
-//                         ssh -o StrictHostKeyChecking=no $MAAS_USER@$REGION_CONTROLLER_IP '
-//                             docker container prune -f
-//                             docker image prune -af
-//                             echo "REGION_CONTROLLER cleaned!"
-//                         '
-//                         '''
-//                     }
-//                 }
-//             }
-//         }
+        stage('Clean REGION_CONTROLLER via SSH') {
+            steps {
+                script {
+                    sshagent(['region_server_ssh_credentials']) {
+                        sh '''
+                        ssh -o StrictHostKeyChecking=no $MAAS_USER@$REGION_CONTROLLER_IP '
+                            docker container prune -f
+                            docker image prune -af
+                            echo "REGION_CONTROLLER cleaned!"
+                        '
+                        '''
+                    }
+                }
+            }
+        }
 
         stage('Start Docker Swarm Service') {
             steps {

@@ -11,12 +11,12 @@ RUN pip install -r requirements.txt
 
 # Copy application files
 COPY main.py /var/lib/jenkins/workspace/LDAP/
-COPY custom.js /var/www/html/
+COPY custom-ui.js /var/www/html/
 
 
 # Set permissions
-RUN chown www-data:www-data /var/www/html/custom.js \
-    && chmod 644 /var/www/html/custom.js
+RUN chown www-data:www-data /var/www/html/custom-ui.js \
+    && chmod 644 /var/www/html/custom-ui.js
 
 
 # Expose port

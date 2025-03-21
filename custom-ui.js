@@ -21,7 +21,7 @@
         debugDiv.innerHTML += `<div>${new Date().toISOString().split('T')[1]} - ${message}</div>`;
     }
 
-    // Function to check if we're on the right page
+    // Check if we're on the right page
     function isAddUserPage() {
         return window.location.pathname.includes('/MAAS/r/settings/users/add');
     }
