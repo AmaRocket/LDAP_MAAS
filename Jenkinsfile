@@ -20,7 +20,6 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                script {
                     dir('/var/lib/jenkins/workspace/LDAP_MAAS/') {
                         script {
                             if (fileExists('.git')) {
