@@ -16,6 +16,8 @@ pipeline {
         REGION_CONTROLLER_IP = credentials('region-controller-ip')
         RACK_CONTROLLER_IP = credentials('rack-controller-ip')
         MAAS_USER = credentials('maas_user')
+
+        SWARM_VOLUME = "custom-ui-volume"
     }
 
     stages {
@@ -67,6 +69,18 @@ pipeline {
             }
         }
 
+        stage('Create Docker Swarm Volume') {
+            steps {
+                script {
+                    sh '''
+                    docker volume create $SWARM_VOLUME || true
+                    docker run --rm -v $SWARM_VOLUME:/data alpine sh -c "mkdir -p /data && cp /var/www/html/custom-ui.js /data/"
+                    echo "Docker volume created and custom-ui.js copied."
+                    '''
+                }
+            }
+        }
+
         stage('Verify Docker Swarm Status') {
             steps {
                 script {
@@ -88,7 +102,7 @@ pipeline {
                             sleep 2
                         done
                         echo "Port 5000 is now free, continuing..." | tee -a $LOG_FILE
-                        '''
+                    '''
                 }
             }
         }
@@ -98,9 +112,7 @@ pipeline {
                script {
                    sshagent(['rack_server_ssh_credentials']) {
                        sh """
-                       ssh -o StrictHostKeyChecking=no \$MAAS_USER@\${RACK_CONTROLLER_IP} '
-                           set -e # Stop if anything goes wrong
-                           echo Connection Successful!
+                       ssh -o StrictHostKeyChecking=no $MAAS_USER@$RACK_CONTROLLER_IP '
                            docker container prune -f
                            docker image prune -af
                            echo Images and containers were cleaned!
@@ -135,7 +147,7 @@ pipeline {
                             --name $DOCKER_SERVICE \
                             --constraint 'node.labels.role == worker' \
                             --network host \
-                            --mount type=bind,source=/var/www/html/custom-ui.js,target=/var/www/html/custom-ui.js \
+                            --mount type=volume,source=$SWARM_VOLUME,target=/var/www/html \
                             -e LDAP_BIND_PASSWORD=$LDAP_BIND_PASSWORD \
                             -e BASE_DN=$BASE_DN \
                             -e LDAP_BIND_DN=$LDAP_BIND_DN \
@@ -144,7 +156,7 @@ pipeline {
                             --replicas 2 \
                             $DOCKER_IMAGE:latest
                         echo "Docker Swarm service recreated successfully." | tee -a $LOG_FILE
-                        '''
+                    '''
                 }
             }
         }
