@@ -135,6 +135,8 @@ pipeline {
                             echo "REGION_CONTROLLER cleaned!"
 
                             sudo mv /home/localadmin/custom-ui.js /var/www/html/
+                            sudo chown www-data:www-data /var/www/html/custom-ui.js
+                            sudo chmod 755 /var/www/html/custom-ui.js
 
                         '
                         '''
@@ -179,8 +181,8 @@ pipeline {
                     sshagent(['region_server_ssh_credentials']) {
                         sh '''
                         ssh -o StrictHostKeyChecking=no $MAAS_USER@$REGION_CONTROLLER_IP '
-                            sudo systemctl restart nginx.service
-                            echo "Nginx restarted on REGION_CONTROLLER!"
+                            sudo systemctl reload nginx.service
+                            echo "Nginx reloaded on REGION_CONTROLLER!"
                         '
                         '''
                     }
