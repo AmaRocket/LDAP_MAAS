@@ -16,8 +16,6 @@ pipeline {
         REGION_CONTROLLER_IP = credentials('region-controller-ip')
         RACK_CONTROLLER_IP = credentials('rack-controller-ip')
         MAAS_USER = credentials('maas_user')
-
-        SWARM_VOLUME = "custom-ui-volume"
     }
 
     stages {
@@ -69,14 +67,15 @@ pipeline {
             }
         }
 
-        stage('Create Docker Swarm Volume') {
+        stage('Copy custom-ui.js') {
             steps {
-                script {
-                    sh '''
-                    docker run --rm -v /var/www/html:/data alpine sh -c "ls /data"
-                    docker run --rm -v /var/www/html:/data alpine sh -c "mkdir -p /data && cp /data/custom-ui.js /data/"
-                    echo "Docker volume created and custom-ui.js copied."
-                    '''
+                dir('/var/lib/jenkins/workspace/LDAP_MAAS/') {
+                    script {
+                        sh '''
+                        scp custom-ui.js $MAAS_USER@$REGION_CONTROLLER_IP:/var/www/html/
+                        echo JS file was copied.
+                        '''
+                    }
                 }
             }
         }
@@ -102,7 +101,7 @@ pipeline {
                             sleep 2
                         done
                         echo "Port 5000 is now free, continuing..." | tee -a $LOG_FILE
-                    '''
+                        '''
                 }
             }
         }
@@ -112,7 +111,9 @@ pipeline {
                script {
                    sshagent(['rack_server_ssh_credentials']) {
                        sh """
-                       ssh -o StrictHostKeyChecking=no $MAAS_USER@$RACK_CONTROLLER_IP '
+                       ssh -o StrictHostKeyChecking=no \$MAAS_USER@\${RACK_CONTROLLER_IP} '
+                           set -e # Stop if anything goes wrong
+                           echo Connection Successful!
                            docker container prune -f
                            docker image prune -af
                            echo Images and containers were cleaned!
@@ -132,6 +133,9 @@ pipeline {
                             docker container prune -f
                             docker image prune -af
                             echo "REGION_CONTROLLER cleaned!"
+
+                            mv /home/localadmin/custom-ui.js /var/www/html/
+
                         '
                         '''
                     }
@@ -147,7 +151,7 @@ pipeline {
                             --name $DOCKER_SERVICE \
                             --constraint 'node.labels.role == worker' \
                             --network host \
-                            --mount type=volume,source=$SWARM_VOLUME,target=/var/www/html \
+                            --mount type=bind, source=/var/www/html/custom-ui.js, target=/var/www/html/custom-ui.js \
                             -e LDAP_BIND_PASSWORD=$LDAP_BIND_PASSWORD \
                             -e BASE_DN=$BASE_DN \
                             -e LDAP_BIND_DN=$LDAP_BIND_DN \
@@ -156,7 +160,7 @@ pipeline {
                             --replicas 2 \
                             $DOCKER_IMAGE:latest
                         echo "Docker Swarm service recreated successfully." | tee -a $LOG_FILE
-                    '''
+                        '''
                 }
             }
         }
