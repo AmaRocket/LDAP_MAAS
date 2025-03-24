@@ -134,7 +134,7 @@ pipeline {
                             docker image prune -af
                             echo "REGION_CONTROLLER cleaned!"
 
-                            sudo mv /home/localadmin/custom-ui.js /var/www/html/
+                            sudo mv /home/$MAAS_USER/custom-ui.js /var/www/html/
 
                         '
                         '''
