@@ -151,7 +151,6 @@ pipeline {
                             --name $DOCKER_SERVICE \
                             --constraint 'node.labels.role == worker' \
                             --network host \
-                            --mount type=bind, source=/var/www/html/custom-ui.js, target=/var/www/html/custom-ui.js \
                             -e LDAP_BIND_PASSWORD=$LDAP_BIND_PASSWORD \
                             -e BASE_DN=$BASE_DN \
                             -e LDAP_BIND_DN=$LDAP_BIND_DN \
