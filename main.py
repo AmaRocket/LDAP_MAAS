@@ -31,7 +31,7 @@ def sanitize_ldap_input(query):
     """Sanitize input to prevent LDAP injection"""
     return re.sub(r'[()\\/*&|<>~=]', '', query)[:100]
 
-@app.route('/ldap-search', methods=['GET'])
+@app.route('/', methods=['GET'])
 @limiter.limit("10 per minute")
 def search_user():
     query = request.args.get('query', '')
