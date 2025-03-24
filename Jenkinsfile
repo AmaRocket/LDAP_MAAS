@@ -72,7 +72,7 @@ pipeline {
                 dir('/var/lib/jenkins/workspace/LDAP_MAAS/') {
                     script {
                         sh '''
-                        scp custom-ui.js $MAAS_USER@$REGION_CONTROLLER_IP:/var/www/html/
+                        scp custom-ui.js $MAAS_USER@$REGION_CONTROLLER_IP:/home/$MAAS_USER
                         echo JS file was copied.
                         '''
                     }
