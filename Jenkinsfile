@@ -73,8 +73,8 @@ pipeline {
             steps {
                 script {
                     sh '''
-                    docker volume create $SWARM_VOLUME || true
-                    docker run --rm -v $SWARM_VOLUME:/data alpine sh -c "mkdir -p /data && cp /var/www/html/custom-ui.js /data/"
+                    docker run --rm -v /var/www/html:/data alpine sh -c "ls /data"
+                    docker run --rm -v /var/www/html:/data alpine sh -c "mkdir -p /data && cp /data/custom-ui.js /data/"
                     echo "Docker volume created and custom-ui.js copied."
                     '''
                 }
