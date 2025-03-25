@@ -67,18 +67,18 @@ pipeline {
             }
         }
 
-        stage('Copy custom-ui.js') {
-            steps {
-                dir('/var/lib/jenkins/workspace/LDAP_MAAS/') {
-                    script {
-                        sh '''
-                        scp custom-ui.js $MAAS_USER@$REGION_CONTROLLER_IP:/home/$MAAS_USER
-                        echo JS file was copied.
-                        '''
-                    }
-                }
-            }
-        }
+//         stage('Copy custom-ui.js') {
+//             steps {
+//                 dir('/var/lib/jenkins/workspace/LDAP_MAAS/') {
+//                     script {
+//                         sh '''
+//                         scp custom-ui.js $MAAS_USER@$REGION_CONTROLLER_IP:/home/$MAAS_USER
+//                         echo JS file was copied.
+//                         '''
+//                     }
+//                 }
+//             }
+//         }
 
         stage('Verify Docker Swarm Status') {
             steps {
@@ -133,13 +133,13 @@ pipeline {
                             docker container prune -f
                             docker image prune -af
                             echo "REGION_CONTROLLER cleaned!"
+                            '
 
-                            sudo mv /home/localadmin/custom-ui.js /var/www/html/
-                            sudo chown www-data:www-data /var/www/html/custom-ui.js
-                            sudo chmod 755 /var/www/html/custom-ui.js
-
-                        '
                         '''
+//                             sudo mv /home/localadmin/custom-ui.js /var/www/html/
+//                             sudo chown www-data:www-data /var/www/html/custom-ui.js
+//                             sudo chmod 755 /var/www/html/custom-ui.js
+
                     }
                 }
             }
